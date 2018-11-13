@@ -55,6 +55,7 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
     private static final String KEY_NAVIGATION_HEIGHT_LAND = "navbar_height_landscape";
     private static final String KEY_NAVIGATION_WIDTH = "navbar_width";
     private static final String KEY_PULSE_SETTINGS = "pulse_settings";
+    private static final String KEY_USE_BOTTOM_GESTURE_NAVIGATION = "use_bottom_gesture_navigation";
 
     private SwitchPreference mNavbarVisibility;
     private ListPreference mNavbarMode;
@@ -67,6 +68,7 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
     private CustomSeekBarPreference mBarHeightLand;
     private CustomSeekBarPreference mBarWidth;
     private PreferenceScreen mPulseSettings;
+    private SystemSettingSwitchPreference mStockNavGestures;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -81,6 +83,7 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
         mFlingSettings = (PreferenceScreen) findPreference(KEY_FLING_NAVBAR_SETTINGS);
         mSmartbarSettings = (PreferenceScreen) findPreference(KEY_SMARTBAR_SETTINGS);
         mPulseSettings = (PreferenceScreen) findPreference(KEY_PULSE_SETTINGS);
+        mStockNavGestures = (SystemSettingSwitchPreference) findPreference(KEY_USE_BOTTOM_GESTURE_NAVIGATION);
 
         boolean showing = Settings.Secure.getInt(getContentResolver(),
                 Settings.Secure.NAVIGATION_BAR_VISIBLE,
@@ -130,6 +133,8 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
                 mFlingSettings.setSelectable(false);
                 mPulseSettings.setEnabled(false);
                 mPulseSettings.setSelectable(false);
+                mStockNavGesturesEnabled.setEnabled(true);
+                mStockNavGesturesEnabled.setSelectable(true);
                 break;
             case 1:
                 mDefaultSettings.setEnabled(false);
@@ -140,6 +145,8 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
                 mFlingSettings.setSelectable(false);
                 mPulseSettings.setEnabled(true);
                 mPulseSettings.setSelectable(true);
+                mStockNavGesturesEnabled.setEnabled(false);
+                mStockNavGesturesEnabled.setSelectable(false);
                 break;
             case 2:
                 mDefaultSettings.setEnabled(false);
@@ -150,6 +157,8 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
                 mFlingSettings.setSelectable(true);
                 mPulseSettings.setEnabled(true);
                 mPulseSettings.setSelectable(true);
+                mStockNavGesturesEnabled.setEnabled(false);
+                mStockNavGesturesEnabled.setSelectable(false);
                 break;
         }
     }
@@ -188,6 +197,17 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
             int val = (Integer) newValue;
             Settings.Secure.putIntForUser(getContentResolver(),
                     Settings.Secure.NAVIGATION_BAR_WIDTH, val, UserHandle.USER_CURRENT);
+            return true;
+        } else if (preference == mStockNavGestures) {
+            int val = (Integer) newValue;
+            Settings.System.putIntForUser(getContentResolver(),
+                    Settings.System.USE_BOTTOM_GESTURE_NAVIGATION, val, UserHandle.USER_CURRENT);
+            if (val != null) {
+                // disable navbar if gestures iis turned on
+                Settings.Secure.putInt(getContentResolver(), Settings.Secure.NAVIGATION_BAR_VISIBLE,
+                        val ? 0 : 1);
+                updateBarVisibleAndUpdatePrefs(showing);
+            }
             return true;
         }
         return false;
