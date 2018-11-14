@@ -33,6 +33,9 @@ import android.support.v7.preference.Preference.OnPreferenceChangeListener;
 import android.provider.Settings;
 
 import org.candy.support.preferences.CustomSeekBarPreference;
+import org.candy.candyshop.preference.SystemSettingSwitchPreference;
+import org.candy.candyshop.fragments.NavGestureSettings;
+import org.candy.candyshop.fragments.StockNavbar;
 
 import com.android.settings.SettingsPreferenceFragment;
 import com.android.internal.logging.nano.MetricsProto;
@@ -46,6 +49,7 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
     private static final String NAVBAR_VISIBILITY = "navbar_visibility";
     private static final String KEY_NAVBAR_MODE = "navbar_mode";
     private static final String KEY_DEFAULT_NAVBAR_SETTINGS = "default_settings";
+    private static final String KEY_DEFAULT_GESTURE_SETTINGS = "default_gesture_settings";
     private static final String KEY_FLING_NAVBAR_SETTINGS = "fling_settings";
     private static final String KEY_CATEGORY_NAVIGATION_INTERFACE = "category_navbar_interface";
     private static final String KEY_CATEGORY_NAVIGATION_GENERAL = "category_navbar_general";
@@ -55,7 +59,6 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
     private static final String KEY_NAVIGATION_HEIGHT_LAND = "navbar_height_landscape";
     private static final String KEY_NAVIGATION_WIDTH = "navbar_width";
     private static final String KEY_PULSE_SETTINGS = "pulse_settings";
-    private static final String KEY_USE_BOTTOM_GESTURE_NAVIGATION = "use_bottom_gesture_navigation";
 
     private SwitchPreference mNavbarVisibility;
     private ListPreference mNavbarMode;
@@ -64,11 +67,11 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
     private PreferenceCategory mNavGeneral;
     private PreferenceScreen mSmartbarSettings;
     private Preference mDefaultSettings;
+    private Preference mDefaultGestureSettings;
     private CustomSeekBarPreference mBarHeightPort;
     private CustomSeekBarPreference mBarHeightLand;
     private CustomSeekBarPreference mBarWidth;
     private PreferenceScreen mPulseSettings;
-    private SystemSettingSwitchPreference mStockNavGestures;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -80,10 +83,10 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
         mNavbarVisibility = (SwitchPreference) findPreference(NAVBAR_VISIBILITY);
         mNavbarMode = (ListPreference) findPreference(KEY_NAVBAR_MODE);
         mDefaultSettings = (Preference) findPreference(KEY_DEFAULT_NAVBAR_SETTINGS);
+        mDefaultGestureSettings = (Preference) findPreference(KEY_DEFAULT_GESTURE_SETTINGS);
         mFlingSettings = (PreferenceScreen) findPreference(KEY_FLING_NAVBAR_SETTINGS);
         mSmartbarSettings = (PreferenceScreen) findPreference(KEY_SMARTBAR_SETTINGS);
         mPulseSettings = (PreferenceScreen) findPreference(KEY_PULSE_SETTINGS);
-        mStockNavGestures = (SystemSettingSwitchPreference) findPreference(KEY_USE_BOTTOM_GESTURE_NAVIGATION);
 
         boolean showing = Settings.Secure.getInt(getContentResolver(),
                 Settings.Secure.NAVIGATION_BAR_VISIBLE,
@@ -127,38 +130,50 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
             case 0:
                 mDefaultSettings.setEnabled(true);
                 mDefaultSettings.setSelectable(true);
+                mDefaultGestureSettings.setEnabled(false);
+                mDefaultGestureSettings.setSelectable(false);
                 mSmartbarSettings.setEnabled(false);
                 mSmartbarSettings.setSelectable(false);
                 mFlingSettings.setEnabled(false);
                 mFlingSettings.setSelectable(false);
                 mPulseSettings.setEnabled(false);
                 mPulseSettings.setSelectable(false);
-                mStockNavGesturesEnabled.setEnabled(true);
-                mStockNavGesturesEnabled.setSelectable(true);
                 break;
             case 1:
                 mDefaultSettings.setEnabled(false);
                 mDefaultSettings.setSelectable(false);
+                mDefaultGestureSettings.setEnabled(true);
+                mDefaultGestureSettings.setSelectable(true);
+                mSmartbarSettings.setEnabled(false);
+                mSmartbarSettings.setSelectable(false);
+                mFlingSettings.setEnabled(false);
+                mFlingSettings.setSelectable(false);
+                mPulseSettings.setEnabled(false);
+                mPulseSettings.setSelectable(false);
+                break;
+            case 2:
+                mDefaultSettings.setEnabled(false);
+                mDefaultSettings.setSelectable(false);
+                mDefaultGestureSettings.setEnabled(false);
+                mDefaultGestureSettings.setSelectable(false);
                 mSmartbarSettings.setEnabled(true);
                 mSmartbarSettings.setSelectable(true);
                 mFlingSettings.setEnabled(false);
                 mFlingSettings.setSelectable(false);
                 mPulseSettings.setEnabled(true);
                 mPulseSettings.setSelectable(true);
-                mStockNavGesturesEnabled.setEnabled(false);
-                mStockNavGesturesEnabled.setSelectable(false);
                 break;
-            case 2:
+            case 3:
                 mDefaultSettings.setEnabled(false);
                 mDefaultSettings.setSelectable(false);
+                mDefaultGestureSettings.setEnabled(false);
+                mDefaultGestureSettings.setSelectable(false);
                 mSmartbarSettings.setEnabled(false);
                 mSmartbarSettings.setSelectable(false);
                 mFlingSettings.setEnabled(true);
                 mFlingSettings.setSelectable(true);
                 mPulseSettings.setEnabled(true);
                 mPulseSettings.setSelectable(true);
-                mStockNavGesturesEnabled.setEnabled(false);
-                mStockNavGesturesEnabled.setSelectable(false);
                 break;
         }
     }
@@ -175,11 +190,20 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
             int mode = Integer.parseInt(((String) newValue).toString());
             Settings.Secure.putInt(getContentResolver(),
                     Settings.Secure.NAVIGATION_BAR_MODE, mode);
+            if (mode  == 1) {
+                // disable navbar if stock bottom gestures is turned on
+                Settings.Secure.putInt(getContentResolver(), Settings.Secure.NAVIGATION_BAR_ENABLED, 0);
+            } else {
+                // Otherwise, leave it on
+                Settings.Secure.putInt(getContentResolver(), Settings.Secure.NAVIGATION_BAR_ENABLED, 1);
+            }
             updateBarModeSettings(mode);
             return true;
         } else if (preference.equals(mNavbarVisibility)) {
-            boolean showing = ((Boolean)newValue);
+            boolean showing = ((Boolean) newValue);
             Settings.Secure.putInt(getContentResolver(), Settings.Secure.NAVIGATION_BAR_VISIBLE,
+                    showing ? 1 : 0);
+            Settings.Secure.putInt(getContentResolver(), Settings.Secure.NAVIGATION_BAR_ENABLED,
                     showing ? 1 : 0);
             updateBarVisibleAndUpdatePrefs(showing);
             return true;
@@ -197,17 +221,6 @@ public class NavigationBarSettings extends SettingsPreferenceFragment implements
             int val = (Integer) newValue;
             Settings.Secure.putIntForUser(getContentResolver(),
                     Settings.Secure.NAVIGATION_BAR_WIDTH, val, UserHandle.USER_CURRENT);
-            return true;
-        } else if (preference == mStockNavGestures) {
-            int val = (Integer) newValue;
-            Settings.System.putIntForUser(getContentResolver(),
-                    Settings.System.USE_BOTTOM_GESTURE_NAVIGATION, val, UserHandle.USER_CURRENT);
-            if (val != null) {
-                // disable navbar if gestures iis turned on
-                Settings.Secure.putInt(getContentResolver(), Settings.Secure.NAVIGATION_BAR_VISIBLE,
-                        val ? 0 : 1);
-                updateBarVisibleAndUpdatePrefs(showing);
-            }
             return true;
         }
         return false;
